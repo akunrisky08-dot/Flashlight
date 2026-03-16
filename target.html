@@ -140,20 +140,21 @@
     </div>
 
     <script>
-        // ===== FIREBASE CONFIG =====
-        // GANTI PAKE CONFIG LU SENDIRI!
-        const firebaseConfig = {
-            apiKey: "AIzaSyA...", // GANTI!
-            authDomain: "senter-remote.firebaseapp.com",
-            databaseURL: "https://senter-remote-default-rtdb.firebaseio.com", // GANTI!
-            projectId: "senter-remote",
-            storageBucket: "senter-remote.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abc123"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+// FIREBASE CONFIG - COPY PASTE INI!
+const firebaseConfig = {
+  apiKey: "AIzaSyCoC-uCqyiuE_jrJlVbRXrqlNsqiRrTLHU",
+  authDomain: "otrat-27a09.firebaseapp.com",
+  databaseURL: "https://otrat-27a09-default-rtdb.firebaseio.com",
+  projectId: "otrat-27a09",
+  storageBucket: "otrat-27a09.firebasestorage.app",
+  messagingSenderId: "414699965939",
+  appId: "1:414699965939:web:8625a69791a8d839021686",
+  measurementId: "G-0DNCZQ2TTC"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
         
         // ===== VARIABEL GLOBAL =====
         const targetId = 'target_' + Math.random().toString(36).substring(2, 10);
