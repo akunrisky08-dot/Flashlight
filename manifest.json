@@ -1,0 +1,22 @@
+{
+    "name": "Remote Senter",
+    "short_name": "Senter",
+    "description": "Kontrol senter jarak jauh",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#667eea",
+    "theme_color": "#667eea",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/icon.png",
+            "sizes": "736x662",
+            "type": "image/png"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "736x736",
+            "type": "image/png"
+        }
+    ]
+}

